@@ -8,11 +8,13 @@ import xgboost as xgb
 from sklearn.model_selection import (
     train_test_split,
     StratifiedKFold,
-    cross_val_score
+    cross_val_score,
+    RandomizedSearchCV
 )
 
 from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
+
 from sklearn.preprocessing import (
     OneHotEncoder,
     StandardScaler,
@@ -22,7 +24,11 @@ from sklearn.preprocessing import (
 from sklearn.impute import SimpleImputer
 
 from sklearn.linear_model import LogisticRegression
-from sklearn.ensemble import RandomForestClassifier
+
+from sklearn.ensemble import (
+    RandomForestClassifier,
+    ExtraTreesClassifier
+)
 
 from sklearn.metrics import (
     accuracy_score,
@@ -59,12 +65,13 @@ print("=" * 60)
 
 df = pd.read_csv(DATA_PATH)
 
-print("\nDataset shape:", df.shape)
+print("\nDataset Shape:")
+print(df.shape)
 
-print("\nColumns:")
+print("\nDataset Columns:")
 print(df.columns.tolist())
 
-print("\nMissing values:")
+print("\nMissing Values:")
 print(df.isnull().sum())
 
 
@@ -78,12 +85,15 @@ print("\n" + "=" * 60)
 print("TARGET DISTRIBUTION")
 print("=" * 60)
 
-print("\nOriginal target distribution:")
+print("\nClass Counts:")
 print(df[target].value_counts())
 
-print("\nTarget distribution percentage:")
+print("\nClass Percentage:")
+
 print(
-    (df[target].value_counts(normalize=True) * 100).round(2)
+    (df[target]
+     .value_counts(normalize=True) * 100)
+    .round(2)
 )
 
 
@@ -92,21 +102,26 @@ print(
 # ============================================================
 
 print("\n" + "=" * 60)
-print("ENCODING TARGET LABELS")
+print("ENCODING TARGET")
 print("=" * 60)
 
 label_encoder = LabelEncoder()
 
-y = label_encoder.fit_transform(df[target])
+y = label_encoder.fit_transform(
+    df[target]
+)
 
-print("\nTarget classes:")
+print("\nClasses:")
 print(label_encoder.classes_)
 
-print("\nTarget mapping:")
+print("\nClass Mapping:")
 
 target_mapping = {
+
     class_name: int(encoded_value)
+
     for encoded_value, class_name
+
     in enumerate(label_encoder.classes_)
 }
 
@@ -122,106 +137,263 @@ print("FEATURE ENGINEERING")
 print("=" * 60)
 
 
-# Interaction between attendance and study hours
+# ------------------------------------------------------------
+# Study and Attendance Relationship
+# ------------------------------------------------------------
+
 df["study_attendance_score"] = (
-    df["study_hours"] * df["attendance"]
+
+    df["study_hours"]
+
+    *
+
+    df["attendance"]
 )
 
 
-# Academic performance score
+# ------------------------------------------------------------
+# Academic Performance
+# ------------------------------------------------------------
+
 df["performance_score"] = (
-    df["previous_grade"] *
+
+    df["previous_grade"]
+
+    *
+
     df["assignments_completed_pct"]
 )
 
 
-# Failure risk score
+# ------------------------------------------------------------
+# Failure Risk
+# ------------------------------------------------------------
+
 df["failure_risk"] = (
-    df["past_failures"] /
-    (df["previous_grade"] + 1)
+
+    df["past_failures"]
+
+    /
+
+    (
+        df["previous_grade"] + 1
+    )
 )
 
 
-# Study efficiency
+# ------------------------------------------------------------
+# Study Efficiency
+# ------------------------------------------------------------
+
 df["study_efficiency"] = (
-    df["assignments_completed_pct"] /
-    (df["study_hours"] + 1)
+
+    df["assignments_completed_pct"]
+
+    /
+
+    (
+        df["study_hours"] + 1
+    )
 )
 
 
-print("\nNew features created:")
+# ------------------------------------------------------------
+# Student Engagement
+# ------------------------------------------------------------
 
-print("- study_attendance_score")
-print("- performance_score")
-print("- failure_risk")
-print("- study_efficiency")
+df["engagement_score"] = (
+
+    df["attendance"]
+
+    +
+
+    df["assignments_completed_pct"]
+
+) / 2
 
 
-# ============================================================
-# 6. SELECT FEATURES
-# ============================================================
+# ------------------------------------------------------------
+# Grade and Attendance Score
+# ------------------------------------------------------------
 
-features = [
+df["grade_attendance_score"] = (
 
-    # Original numerical features
-    "attendance",
-    "study_hours",
-    "past_failures",
-    "assignments_completed_pct",
-    "previous_grade",
+    df["previous_grade"]
 
-    # Original categorical features
-    "parental_education",
-    "family_income",
-    "extracurricular",
-    "internet_access",
+    *
 
-    # Engineered features
+    df["attendance"]
+)
+
+
+# ------------------------------------------------------------
+# Student Effort Score
+# ------------------------------------------------------------
+
+df["effort_score"] = (
+
+    df["study_hours"]
+
+    *
+
+    df["assignments_completed_pct"]
+)
+
+
+# ------------------------------------------------------------
+# Failure Impact
+# ------------------------------------------------------------
+
+df["failure_impact"] = (
+
+    df["past_failures"]
+
+    *
+
+    (
+        100 - df["attendance"]
+    )
+)
+
+
+# ------------------------------------------------------------
+# Grade Efficiency
+# ------------------------------------------------------------
+
+df["grade_efficiency"] = (
+
+    df["previous_grade"]
+
+    /
+
+    (
+        df["study_hours"] + 1
+    )
+)
+
+
+# ------------------------------------------------------------
+# Assignment Gap
+# ------------------------------------------------------------
+
+df["assignment_gap"] = (
+
+    100
+
+    -
+
+    df["assignments_completed_pct"]
+)
+
+
+print("\nNew Features Created:")
+
+new_features = [
+
     "study_attendance_score",
+
     "performance_score",
+
     "failure_risk",
-    "study_efficiency"
+
+    "study_efficiency",
+
+    "engagement_score",
+
+    "grade_attendance_score",
+
+    "effort_score",
+
+    "failure_impact",
+
+    "grade_efficiency",
+
+    "assignment_gap"
 ]
 
+for feature in new_features:
 
-X = df[features]
-
-print("\nTotal features used:", len(features))
-
-print("\nFeatures:")
-print(features)
+    print("-", feature)
 
 
 # ============================================================
-# 7. NUMERIC AND CATEGORICAL FEATURES
+# 6. DEFINE FEATURES
 # ============================================================
+
+
+# Numerical Features
 
 numeric_features = [
 
     "attendance",
+
     "study_hours",
+
     "past_failures",
+
     "assignments_completed_pct",
+
     "previous_grade",
 
+
+    # Engineered Features
+
     "study_attendance_score",
+
     "performance_score",
+
     "failure_risk",
-    "study_efficiency"
+
+    "study_efficiency",
+
+    "engagement_score",
+
+    "grade_attendance_score",
+
+    "effort_score",
+
+    "failure_impact",
+
+    "grade_efficiency",
+
+    "assignment_gap"
 ]
 
+
+# Categorical Features
 
 categorical_features = [
 
     "parental_education",
+
     "family_income",
+
     "extracurricular",
+
     "internet_access"
 ]
 
 
+# Combine All Features
+
+features = (
+
+    numeric_features
+
+    +
+
+    categorical_features
+)
+
+
+X = df[features]
+
+
+print("\nTotal Features Used:", len(features))
+
+
 # ============================================================
-# 8. PREPROCESSING PIPELINES
+# 7. PREPROCESSING
 # ============================================================
 
 print("\n" + "=" * 60)
@@ -229,60 +401,84 @@ print("DATA PREPROCESSING")
 print("=" * 60)
 
 
-# Numerical preprocessing
+# Numerical Pipeline
 
 numeric_pipeline = Pipeline([
 
     (
+
         "imputer",
-        SimpleImputer(strategy="median")
+
+        SimpleImputer(
+            strategy="median"
+        )
+
     ),
 
     (
+
         "scaler",
+
         StandardScaler()
+
     )
 ])
 
 
-# Categorical preprocessing
+# Categorical Pipeline
 
 categorical_pipeline = Pipeline([
 
     (
+
         "imputer",
-        SimpleImputer(strategy="most_frequent")
+
+        SimpleImputer(
+            strategy="most_frequent"
+        )
+
     ),
 
     (
+
         "onehot",
+
         OneHotEncoder(
             handle_unknown="ignore"
         )
+
     )
 ])
 
 
-# Combine preprocessing
+# Combine Pipelines
 
 preprocessor = ColumnTransformer([
 
     (
+
         "num",
+
         numeric_pipeline,
+
         numeric_features
+
     ),
 
     (
+
         "cat",
+
         categorical_pipeline,
+
         categorical_features
+
     )
 ])
 
 
 # ============================================================
-# 9. TRAIN TEST SPLIT
+# 8. TRAIN TEST SPLIT
 # ============================================================
 
 print("\n" + "=" * 60)
@@ -293,6 +489,7 @@ print("=" * 60)
 X_train, X_test, y_train, y_test = train_test_split(
 
     X,
+
     y,
 
     test_size=0.20,
@@ -303,18 +500,23 @@ X_train, X_test, y_train, y_test = train_test_split(
 )
 
 
-print("\nTraining data shape:", X_train.shape)
+print("\nTraining Shape:")
 
-print("Testing data shape:", X_test.shape)
+print(X_train.shape)
+
+
+print("\nTesting Shape:")
+
+print(X_test.shape)
 
 
 # ============================================================
-# 10. CROSS VALIDATION SETUP
+# 9. CROSS VALIDATION
 # ============================================================
 
 cv = StratifiedKFold(
 
-    n_splits=5,
+    n_splits=3,
 
     shuffle=True,
 
@@ -323,7 +525,7 @@ cv = StratifiedKFold(
 
 
 # ============================================================
-# 11. DEFINE MODELS
+# 10. DEFINE MODELS
 # ============================================================
 
 print("\n" + "=" * 60)
@@ -338,9 +540,11 @@ models = {
     # Logistic Regression
     # --------------------------------------------------------
 
-    "Logistic Regression": LogisticRegression(
+    "Logistic Regression":
 
-        max_iter=2000,
+    LogisticRegression(
+
+        max_iter=3000,
 
         random_state=42
     ),
@@ -350,9 +554,35 @@ models = {
     # Random Forest
     # --------------------------------------------------------
 
-    "Random Forest": RandomForestClassifier(
+    "Random Forest":
 
-        n_estimators=300,
+    RandomForestClassifier(
+
+        n_estimators=400,
+
+        max_depth=None,
+
+        min_samples_split=2,
+
+        min_samples_leaf=1,
+
+        class_weight="balanced",
+
+        random_state=42,
+
+        n_jobs=-1
+    ),
+
+
+    # --------------------------------------------------------
+    # Extra Trees
+    # --------------------------------------------------------
+
+    "Extra Trees":
+
+    ExtraTreesClassifier(
+
+        n_estimators=400,
 
         max_depth=None,
 
@@ -372,29 +602,33 @@ models = {
     # Improved XGBoost
     # --------------------------------------------------------
 
-    "XGBoost": xgb.XGBClassifier(
+    "XGBoost":
 
-        n_estimators=400,
+    xgb.XGBClassifier(
 
-        learning_rate=0.05,
+        n_estimators=500,
 
-        max_depth=6,
+        learning_rate=0.03,
+
+        max_depth=5,
 
         min_child_weight=2,
 
-        subsample=0.85,
+        subsample=0.9,
 
-        colsample_bytree=0.85,
+        colsample_bytree=0.9,
 
-        gamma=0.1,
+        gamma=0.05,
 
-        reg_alpha=0.05,
+        reg_alpha=0.01,
 
-        reg_lambda=1.0,
+        reg_lambda=1.5,
 
-        random_state=42,
+        objective="multi:softprob",
 
         eval_metric="mlogloss",
+
+        random_state=42,
 
         verbosity=0,
 
@@ -404,16 +638,15 @@ models = {
 
 
 # ============================================================
-# 12. TRAIN AND COMPARE MODELS
+# 11. TRAIN AND COMPARE MODELS
 # ============================================================
 
 print("\n" + "=" * 60)
-print("MODEL TRAINING AND EVALUATION")
+print("MODEL TRAINING")
 print("=" * 60)
 
 
 results = {}
-
 
 best_model_name = None
 
@@ -426,53 +659,54 @@ for name, model in models.items():
 
     print("=" * 60)
 
-    print(f"TRAINING MODEL: {name}")
+    print(f"TRAINING: {name}")
 
     print("=" * 60)
 
 
-    # --------------------------------------------------------
     # Create Pipeline
-    # --------------------------------------------------------
 
     pipeline = Pipeline([
 
         (
+
             "preprocessor",
+
             preprocessor
+
         ),
 
         (
+
             "model",
+
             model
+
         )
     ])
 
 
-    # --------------------------------------------------------
     # Train Model
-    # --------------------------------------------------------
 
     print("\nTraining model...")
 
     pipeline.fit(
+
         X_train,
+
         y_train
     )
 
 
-    # --------------------------------------------------------
     # Predictions
-    # --------------------------------------------------------
 
     predictions = pipeline.predict(
+
         X_test
     )
 
 
-    # --------------------------------------------------------
-    # Calculate Accuracy
-    # --------------------------------------------------------
+    # Accuracy
 
     accuracy = accuracy_score(
 
@@ -482,9 +716,7 @@ for name, model in models.items():
     )
 
 
-    # --------------------------------------------------------
-    # Weighted F1 Score
-    # --------------------------------------------------------
+    # Weighted F1
 
     weighted_f1 = f1_score(
 
@@ -496,9 +728,7 @@ for name, model in models.items():
     )
 
 
-    # --------------------------------------------------------
-    # Macro F1 Score
-    # --------------------------------------------------------
+    # Macro F1
 
     macro_f1 = f1_score(
 
@@ -510,24 +740,20 @@ for name, model in models.items():
     )
 
 
-    # --------------------------------------------------------
-    # Display Results
-    # --------------------------------------------------------
+    # Print Results
 
-    print("\nMODEL PERFORMANCE")
+    print("\nMODEL RESULTS")
 
     print("-" * 40)
 
     print(f"Accuracy: {accuracy:.4f}")
 
-    print(f"Weighted F1 Score: {weighted_f1:.4f}")
+    print(f"Weighted F1: {weighted_f1:.4f}")
 
-    print(f"Macro F1 Score: {macro_f1:.4f}")
+    print(f"Macro F1: {macro_f1:.4f}")
 
 
-    # --------------------------------------------------------
     # Classification Report
-    # --------------------------------------------------------
 
     print("\nClassification Report:")
 
@@ -546,11 +772,9 @@ for name, model in models.items():
     )
 
 
-    # --------------------------------------------------------
     # Confusion Matrix
-    # --------------------------------------------------------
 
-    print("Confusion Matrix:")
+    print("\nConfusion Matrix:")
 
     print(
 
@@ -589,7 +813,10 @@ for name, model in models.items():
     cv_mean = cv_scores.mean()
 
 
-    print(f"Cross Validation Macro F1: {cv_mean:.4f}")
+    print(
+
+        f"Cross Validation Macro F1: {cv_mean:.4f}"
+    )
 
 
     # --------------------------------------------------------
@@ -598,13 +825,24 @@ for name, model in models.items():
 
     results[name] = {
 
-        "accuracy": float(accuracy),
+        "accuracy":
 
-        "weighted_f1": float(weighted_f1),
+        float(accuracy),
 
-        "macro_f1": float(macro_f1),
 
-        "cv_macro_f1_mean": float(cv_mean)
+        "weighted_f1":
+
+        float(weighted_f1),
+
+
+        "macro_f1":
+
+        float(macro_f1),
+
+
+        "cv_macro_f1_mean":
+
+        float(cv_mean)
     }
 
 
@@ -620,24 +858,17 @@ for name, model in models.items():
 
 
 # ============================================================
-# 13. DISPLAY BEST MODEL
+# 12. DISPLAY INITIAL RESULTS
 # ============================================================
 
 print("\n")
 
 print("=" * 60)
 
-print("BEST MODEL")
+print("INITIAL MODEL RESULTS")
 
 print("=" * 60)
 
-
-print(f"\nBest Model: {best_model_name}")
-
-print(f"Best Macro F1 Score: {best_macro_f1:.4f}")
-
-
-print("\nAll Model Results:")
 
 print(
 
@@ -650,38 +881,516 @@ print(
 )
 
 
+print(
+
+    f"\nBest Initial Model: {best_model_name}"
+)
+
+
+print(
+
+    f"Best Macro F1: {best_macro_f1:.4f}"
+)
+
+
 # ============================================================
-# 14. RETRAIN BEST MODEL ON FULL DATASET
+# 13. XGBOOST HYPERPARAMETER TUNING
 # ============================================================
 
 print("\n")
 
 print("=" * 60)
 
-print("RETRAINING BEST MODEL")
+print("XGBOOST HYPERPARAMETER TUNING")
 
 print("=" * 60)
 
 
-best_model = models[best_model_name]
+# Base XGBoost Model
+
+xgb_base = xgb.XGBClassifier(
+
+    objective="multi:softprob",
+
+    eval_metric="mlogloss",
+
+    random_state=42,
+
+    n_jobs=-1,
+
+    verbosity=0
+)
 
 
-final_pipeline = Pipeline([
+# XGBoost Pipeline
+
+xgb_pipeline = Pipeline([
 
     (
+
         "preprocessor",
+
         preprocessor
+
     ),
 
     (
+
         "model",
-        best_model
+
+        xgb_base
+
     )
 ])
 
 
-print("\nTraining best model using full dataset...")
+# Parameter Search Space
 
+param_distributions = {
+
+
+    "model__n_estimators":
+
+    [
+
+        200,
+
+        300,
+
+        400,
+
+        500,
+
+        600
+    ],
+
+
+    "model__max_depth":
+
+    [
+
+        3,
+
+        4,
+
+        5,
+
+        6,
+
+        7
+    ],
+
+
+    "model__learning_rate":
+
+    [
+
+        0.01,
+
+        0.03,
+
+        0.05,
+
+        0.07,
+
+        0.1
+    ],
+
+
+    "model__subsample":
+
+    [
+
+        0.7,
+
+        0.8,
+
+        0.9,
+
+        1.0
+    ],
+
+
+    "model__colsample_bytree":
+
+    [
+
+        0.7,
+
+        0.8,
+
+        0.9,
+
+        1.0
+    ],
+
+
+    "model__min_child_weight":
+
+    [
+
+        1,
+
+        2,
+
+        3,
+
+        5
+    ],
+
+
+    "model__gamma":
+
+    [
+
+        0,
+
+        0.05,
+
+        0.1,
+
+        0.2
+    ],
+
+
+    "model__reg_alpha":
+
+    [
+
+        0,
+
+        0.01,
+
+        0.05,
+
+        0.1
+    ],
+
+
+    "model__reg_lambda":
+
+    [
+
+        0.5,
+
+        1,
+
+        1.5,
+
+        2
+    ]
+}
+
+
+# Random Search
+
+random_search = RandomizedSearchCV(
+
+    estimator=xgb_pipeline,
+
+    param_distributions=param_distributions,
+
+    n_iter=20,
+
+    scoring="f1_macro",
+
+    cv=3,
+
+    verbose=2,
+
+    random_state=42,
+
+    n_jobs=-1
+)
+
+
+print("\nStarting XGBoost tuning...")
+
+print("This may take some time.")
+
+
+# Train Random Search
+
+random_search.fit(
+
+    X_train,
+
+    y_train
+)
+
+
+# ============================================================
+# 14. BEST XGBOOST PARAMETERS
+# ============================================================
+
+print("\n")
+
+print("=" * 60)
+
+print("BEST XGBOOST PARAMETERS")
+
+print("=" * 60)
+
+
+print(
+
+    random_search.best_params_
+)
+
+
+print(
+
+    f"\nBest CV Macro F1: "
+    f"{random_search.best_score_:.4f}"
+)
+
+
+# ============================================================
+# 15. TEST TUNED XGBOOST
+# ============================================================
+
+best_xgb_pipeline = (
+
+    random_search.best_estimator_
+)
+
+
+xgb_predictions = (
+
+    best_xgb_pipeline.predict(
+
+        X_test
+    )
+)
+
+
+xgb_accuracy = accuracy_score(
+
+    y_test,
+
+    xgb_predictions
+)
+
+
+xgb_weighted_f1 = f1_score(
+
+    y_test,
+
+    xgb_predictions,
+
+    average="weighted"
+)
+
+
+xgb_macro_f1 = f1_score(
+
+    y_test,
+
+    xgb_predictions,
+
+    average="macro"
+)
+
+
+print("\n")
+
+print("=" * 60)
+
+print("TUNED XGBOOST RESULTS")
+
+print("=" * 60)
+
+
+print(
+
+    f"\nAccuracy: "
+    f"{xgb_accuracy:.4f}"
+)
+
+
+print(
+
+    f"Weighted F1: "
+    f"{xgb_weighted_f1:.4f}"
+)
+
+
+print(
+
+    f"Macro F1: "
+    f"{xgb_macro_f1:.4f}"
+)
+
+
+# Classification Report
+
+print("\nClassification Report:")
+
+print(
+
+    classification_report(
+
+        y_test,
+
+        xgb_predictions,
+
+        target_names=label_encoder.classes_,
+
+        zero_division=0
+    )
+)
+
+
+# Confusion Matrix
+
+print("\nConfusion Matrix:")
+
+print(
+
+    confusion_matrix(
+
+        y_test,
+
+        xgb_predictions
+    )
+)
+
+
+# ============================================================
+# 16. ADD TUNED XGBOOST TO RESULTS
+# ============================================================
+
+results["Tuned XGBoost"] = {
+
+    "accuracy":
+
+    float(xgb_accuracy),
+
+
+    "weighted_f1":
+
+    float(xgb_weighted_f1),
+
+
+    "macro_f1":
+
+    float(xgb_macro_f1),
+
+
+    "cv_macro_f1_mean":
+
+    float(random_search.best_score_)
+}
+
+
+# ============================================================
+# 17. CHECK IF TUNED XGBOOST IS BEST
+# ============================================================
+
+if xgb_macro_f1 > best_macro_f1:
+
+    best_macro_f1 = xgb_macro_f1
+
+    best_model_name = "Tuned XGBoost"
+
+    best_pipeline = best_xgb_pipeline
+
+else:
+
+    best_pipeline = None
+
+
+# ============================================================
+# 18. FINAL RESULTS
+# ============================================================
+
+print("\n")
+
+print("=" * 60)
+
+print("FINAL MODEL COMPARISON")
+
+print("=" * 60)
+
+
+print(
+
+    json.dumps(
+
+        results,
+
+        indent=4
+    )
+)
+
+
+print(
+
+    f"\nFINAL BEST MODEL: "
+    f"{best_model_name}"
+)
+
+
+print(
+
+    f"FINAL BEST MACRO F1: "
+    f"{best_macro_f1:.4f}"
+)
+
+
+# ============================================================
+# 19. RETRAIN BEST MODEL
+# ============================================================
+
+print("\n")
+
+print("=" * 60)
+
+print("RETRAINING BEST MODEL ON FULL DATA")
+
+print("=" * 60)
+
+
+# If tuned XGBoost wins
+
+if best_model_name == "Tuned XGBoost":
+
+    final_pipeline = best_xgb_pipeline
+
+    print("\nUsing Tuned XGBoost")
+
+else:
+
+    best_model = models[best_model_name]
+
+    final_pipeline = Pipeline([
+
+        (
+
+            "preprocessor",
+
+            preprocessor
+
+        ),
+
+        (
+
+            "model",
+
+            best_model
+
+        )
+    ])
+
+    print(
+
+        f"\nUsing {best_model_name}"
+    )
+
+
+# Train using complete dataset
+
+print("\nTraining final model...")
 
 final_pipeline.fit(
 
@@ -692,7 +1401,7 @@ final_pipeline.fit(
 
 
 # ============================================================
-# 15. SAVE MODEL
+# 20. SAVE MODEL
 # ============================================================
 
 print("\n")
@@ -704,7 +1413,7 @@ print("SAVING MODEL FILES")
 print("=" * 60)
 
 
-# Save trained model
+# Save trained pipeline
 
 joblib.dump(
 
@@ -714,7 +1423,7 @@ joblib.dump(
 )
 
 
-# Save label encoder
+# Save Label Encoder
 
 joblib.dump(
 
@@ -724,7 +1433,7 @@ joblib.dump(
 )
 
 
-# Save feature names after preprocessing
+# Save Feature Names
 
 joblib.dump(
 
@@ -736,7 +1445,7 @@ joblib.dump(
 )
 
 
-# Save model results
+# Save Results
 
 with open(
 
@@ -757,24 +1466,43 @@ with open(
 
 
 # ============================================================
-# 16. DISPLAY SAVED FILES
+# 21. DISPLAY SAVED FILES
 # ============================================================
 
 print("\nSaved Files:")
 
 print("-" * 40)
 
-print(f"Model: {MODEL_PATH.name}")
+print(
 
-print(f"Label Encoder: {ENCODER_PATH.name}")
+    "Model:",
+    MODEL_PATH.name
+)
 
-print(f"Feature Names: {FEATURES_PATH.name}")
 
-print(f"Model Results: {RESULTS_PATH.name}")
+print(
+
+    "Label Encoder:",
+    ENCODER_PATH.name
+)
+
+
+print(
+
+    "Feature Names:",
+    FEATURES_PATH.name
+)
+
+
+print(
+
+    "Results:",
+    RESULTS_PATH.name
+)
 
 
 # ============================================================
-# 17. FINAL MESSAGE
+# 22. COMPLETION MESSAGE
 # ============================================================
 
 print("\n")
