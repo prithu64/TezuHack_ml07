@@ -1,17 +1,32 @@
 {
     "Logistic Regression": {
-        "accuracy": 0.93935,
-        "weighted_f1": 0.9393382091851811,
-        "macro_f1": 0.939184912110306
+        "accuracy": 0.93955,
+        "weighted_f1": 0.9395416330249813,
+        "macro_f1": 0.9393976518347817,
+        "cv_macro_f1_mean": 0.9368691216756567
     },
     "Random Forest": {
-        "accuracy": 0.9227,
-        "weighted_f1": 0.9226360095156211,
-        "macro_f1": 0.9218653161996803
+        "accuracy": 0.932,
+        "weighted_f1": 0.9319897298609052,
+        "macro_f1": 0.9322773379651702,
+        "cv_macro_f1_mean": 0.9294501865477631
+    },
+    "Extra Trees": {
+        "accuracy": 0.93245,
+        "weighted_f1": 0.9324355918257614,
+        "macro_f1": 0.9320994306518336,
+        "cv_macro_f1_mean": 0.9287711175595786
     },
     "XGBoost": {
-        "accuracy": 0.9354,
-        "weighted_f1": 0.9353948746456101,
-        "macro_f1": 0.9351732501593348
+        "accuracy": 0.938,
+        "weighted_f1": 0.9379996158119335,
+        "macro_f1": 0.9378343387886905,
+        "cv_macro_f1_mean": 0.9349947923314731
+    },
+    "Tuned XGBoost": {
+        "accuracy": 0.9383,
+        "weighted_f1": 0.9383001984961121,
+        "macro_f1": 0.9381580106825455,
+        "cv_macro_f1_mean": 0.9351296066121059
     }
 }
