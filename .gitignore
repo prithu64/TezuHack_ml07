@@ -1,2 +1,4 @@
 .venv
 venv/ 
+Frontend/node_modules/
+Frontend/.next/
