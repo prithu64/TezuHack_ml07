@@ -19,17 +19,11 @@ export interface ProbabilityData {
   [category: string]: number | undefined;
 }
 
-export interface ContributingFactor {
-  feature: string;
-  value: string | number;
-  reason: string;
-}
-
 export interface PredictionResponse {
   risk_category: RiskCategory;
-  confidence: number;
+  message: string;
   probabilities?: ProbabilityData;
-  contributingFactors?: ContributingFactor[];
+  contributing_factors: string[];
 }
 
 export interface HistoryRecord extends PredictionRequest {
