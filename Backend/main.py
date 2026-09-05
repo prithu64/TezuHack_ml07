@@ -8,11 +8,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-
-# --------------------------------------------------
 # Paths
-# --------------------------------------------------
-
 BASE_DIR = Path(__file__).resolve().parent
 
 MODEL_PATH = BASE_DIR / "student_risk_model.pkl"
@@ -20,10 +16,8 @@ ENCODER_PATH = BASE_DIR / "label_encoder.pkl"
 FEATURES_PATH = BASE_DIR / "feature_names.pkl"
 
 
-# --------------------------------------------------
-# Load trained files
-# --------------------------------------------------
 
+# Load trained files
 model = joblib.load(MODEL_PATH)
 label_encoder = joblib.load(ENCODER_PATH)
 feature_names = joblib.load(FEATURES_PATH)
@@ -33,10 +27,8 @@ print("Expected input features:")
 print(feature_names)
 
 
-# --------------------------------------------------
-# FastAPI application
-# --------------------------------------------------
 
+# FastAPI application
 app = FastAPI(
     title="Student Support Risk Prediction API",
     description="Predicts student academic risk and identifies supporting indicators.",
@@ -44,10 +36,8 @@ app = FastAPI(
 )
 
 
-# --------------------------------------------------
-# CORS configuration
-# --------------------------------------------------
 
+# CORS configuration
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -60,10 +50,8 @@ app.add_middleware(
 )
 
 
-# --------------------------------------------------
-# Request schema
-# --------------------------------------------------
 
+# Request schema
 class StudentData(BaseModel):
 
     attendance: float = Field(
@@ -119,10 +107,8 @@ class StudentData(BaseModel):
     )
 
 
-# --------------------------------------------------
-# Health check
-# --------------------------------------------------
 
+# Health check
 @app.get("/")
 def root():
     return {
@@ -130,10 +116,8 @@ def root():
     }
 
 
-# --------------------------------------------------
-# Generate contributing factors
-# --------------------------------------------------
 
+# Generate contributing factors
 def get_contributing_factors(student: StudentData):
 
     factors = []
@@ -177,10 +161,8 @@ def get_contributing_factors(student: StudentData):
     return factors
 
 
-# --------------------------------------------------
-# Generate support message
-# --------------------------------------------------
 
+# Generate support message
 def get_support_message(risk_category: str):
 
     if risk_category == "High-Risk":
@@ -201,10 +183,7 @@ def get_support_message(risk_category: str):
     )
 
 
-# --------------------------------------------------
 # Prediction endpoint
-# --------------------------------------------------
-
 @app.post("/predict")
 def predict_student_risk(student: StudentData):
 
