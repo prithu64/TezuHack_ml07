@@ -13,6 +13,10 @@
   --panel: rgba(255, 255, 255, 0.58);
   --panel-strong: #e9f0e8;
   --input-line: #aabbb5;
+  --safe-bg: #d6e5d7;
+  --warning-bg: #f8e6bd;
+  --high-risk-bg: #f5d7d2;
+  --error-bg: #fbeae6;
   --shadow: 0 24px 70px rgba(22, 52, 59, 0.08);
 }
 :root[data-theme="dark"] {
@@ -26,7 +30,12 @@
   --panel: rgba(24, 48, 53, 0.8);
   --panel-strong: #1d3a3e;
   --input-line: #58746f;
+  --safe-bg: #28534e;
+  --warning-bg: #62502b;
+  --high-risk-bg: #613936;
+  --error-bg: #542d2a;
   --shadow: 0 24px 70px rgba(0, 0, 0, 0.18);
+  color-scheme: dark;
 }
 * {
   box-sizing: border-box;
@@ -370,7 +379,8 @@ select {
 .form-error-banner {
   margin: 20px 0 0;
   padding: 12px;
-  background: #fbeae6;
+  color: var(--coral);
+  background: var(--error-bg);
 }
 .result-panel {
   background: var(--panel-strong);
@@ -427,13 +437,13 @@ select {
     sans-serif;
 }
 .risk-badge {
-  background: #d6e5d7;
+  background: var(--safe-bg);
 }
 .risk-badge.at-risk {
-  background: #f8e6bd;
+  background: var(--warning-bg);
 }
 .risk-badge.high-risk {
-  background: #f5d7d2;
+  background: var(--high-risk-bg);
 }
 .confidence-line {
   display: flex;
@@ -535,13 +545,13 @@ th {
   text-transform: uppercase;
 }
 .table-risk.safe {
-  background: #d6e5d7;
+  background: var(--safe-bg);
 }
 .table-risk.at-risk {
-  background: #f8e6bd;
+  background: var(--warning-bg);
 }
 .table-risk.high-risk {
-  background: #f5d7d2;
+  background: var(--high-risk-bg);
 }
 .state-block {
   display: flex;
