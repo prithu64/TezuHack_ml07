@@ -489,19 +489,31 @@ select {
 }
 .factor-list {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 1px;
   background: var(--line);
   border: 1px solid var(--line);
 }
 .factor-row {
   display: grid;
-  grid-template-columns: 35px 1fr auto;
+  grid-template-columns: 35px minmax(0, 1fr);
   gap: 12px;
   align-items: start;
-  min-height: 120px;
-  padding: 19px;
+  min-height: 0;
+  min-width: 0;
+  padding: 18px;
   background: var(--paper);
+}
+.factor-row h3 {
+  min-width: 0;
+  margin: 0;
+  font-size: 1.05rem;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+.factor-row:last-child:nth-child(odd) {
+  grid-column: 1 / -1;
 }
 .factor-index {
   color: var(--gold);
@@ -691,8 +703,7 @@ select {
   font-size: 1.15rem;
 }
 .factor-row {
-  min-height: 96px;
-  padding: 20px;
+  padding: 18px;
 }
 
 @keyframes spin {
