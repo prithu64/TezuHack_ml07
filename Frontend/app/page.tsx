@@ -17,13 +17,69 @@ export default function DashboardPage() {
   const [historyError, setHistoryError] = useState("");
 
   useEffect(() => {
-    getPredictionHistory().then(setHistory).catch(() => setHistoryError("Unable to load prediction history. Please check the FastAPI backend.")).finally(() => setHistoryLoading(false));
+    getPredictionHistory()
+      .then(setHistory)
+      .catch(() =>
+        setHistoryError(
+          "Unable to load prediction history. Please check the FastAPI backend.",
+        ),
+      )
+      .finally(() => setHistoryLoading(false));
   }, []);
 
   function handlePrediction(result: PredictionResponse) {
     setPrediction(result);
-    getPredictionHistory().then(setHistory).catch(() => undefined);
+    getPredictionHistory()
+      .then(setHistory)
+      .catch(() => undefined);
   }
 
-  return <main className="app-shell"><DashboardHeader /><SummaryCards history={history} /><div className="dashboard-grid"><section className="panel form-panel"><div className="panel-heading"><div><p className="eyebrow">New assessment</p><h2>Assess student indicators</h2></div><span className="live-label"><span /> API connected</span></div><PredictionForm onPrediction={handlePrediction} /></section><section className="panel result-panel"><div className="panel-heading"><div><p className="eyebrow">Latest result</p><h2>Prediction result</h2></div><span className="panel-code">01</span></div><PredictionResult prediction={prediction} /></section></div><section className="panel"><div className="panel-heading"><div><p className="eyebrow">Recorded assessments</p><h2>Prediction history</h2></div><span className="panel-code">02</span></div>{historyLoading ? <LoadingState label="Loading prediction history..." /> : <PredictionHistory history={history} error={historyError} />}</section><footer className="app-footer"><span>Student Support Risk Prediction System</span><span>Prediction support tool / review with care</span></footer></main>;
+  return (
+    <main className="app-shell">
+      <DashboardHeader />
+      <SummaryCards history={history} />
+      <div className="dashboard-grid">
+        <section className="panel form-panel">
+          <div className="panel-heading">
+            <div>
+              <p className="eyebrow">New assessment</p>
+              <h2>Assess student indicators</h2>
+            </div>
+            <span className="live-label">
+              <span /> API connected
+            </span>
+          </div>
+          <PredictionForm onPrediction={handlePrediction} />
+        </section>
+        <section className="panel result-panel">
+          <div className="panel-heading">
+            <div>
+              <p className="eyebrow">Latest result</p>
+              <h2>Prediction result</h2>
+            </div>
+            <span className="panel-code">01</span>
+          </div>
+          <PredictionResult prediction={prediction} />
+        </section>
+      </div>
+      <section className="panel">
+        <div className="panel-heading">
+          <div>
+            <p className="eyebrow">Recorded assessments</p>
+            <h2>Prediction history</h2>
+          </div>
+          <span className="panel-code">02</span>
+        </div>
+        {historyLoading ? (
+          <LoadingState label="Loading prediction history..." />
+        ) : (
+          <PredictionHistory history={history} error={historyError} />
+        )}
+      </section>
+      <footer className="app-footer">
+        <span>Student Support Risk Prediction System</span>
+        <span>3G1T</span>
+      </footer>
+    </main>
+  );
 }

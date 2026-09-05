@@ -31,7 +31,9 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return response.json() as Promise<T>;
 }
 
-export function predictStudent(input: PredictionRequest): Promise<PredictionResponse> {
+export function predictStudent(
+  input: PredictionRequest,
+): Promise<PredictionResponse> {
   return request<PredictionResponse>("/predict", {
     method: "POST",
     body: JSON.stringify(input),
@@ -39,16 +41,23 @@ export function predictStudent(input: PredictionRequest): Promise<PredictionResp
 }
 
 export async function getPredictionHistory(): Promise<HistoryRecord[]> {
-  const data = await request<HistoryRecord[] | { predictions?: HistoryRecord[] }>("/history");
-  return Array.isArray(data) ? data : data.predictions ?? [];
+  const data = await request<
+    HistoryRecord[] | { predictions?: HistoryRecord[] }
+  >("/history");
+  return Array.isArray(data) ? data : (data.predictions ?? []);
 }
 
 export async function getModelResults(): Promise<ModelResult[]> {
-  const data = await request<Record<string, Omit<ModelResult, "model">> | ModelResult[]>("/model-results");
+  const data = await request<
+    Record<string, Omit<ModelResult, "model">> | ModelResult[]
+  >("/model-results");
 
   if (Array.isArray(data)) {
     return data;
   }
 
-  return Object.entries(data).map(([model, metrics]) => ({ model, ...metrics }));
+  return Object.entries(data).map(([model, metrics]) => ({
+    model,
+    ...metrics,
+  }));
 }
