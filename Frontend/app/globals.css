@@ -624,6 +624,17 @@ h3 {
   font-weight: 700;
   letter-spacing: 0.02em;
 }
+.history-factors {
+  display: grid;
+  gap: 4px;
+  min-width: 240px;
+  margin: 0;
+  padding-left: 16px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.45;
+  white-space: normal;
+}
 .input-wrap,
 .select-wrap {
   min-height: 42px;

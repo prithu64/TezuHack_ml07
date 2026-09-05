@@ -26,12 +26,14 @@ export interface PredictionResponse {
   contributing_factors: string[];
 }
 
-export interface HistoryRecord extends PredictionRequest {
+export interface HistoryRecord {
   id?: string;
-  created_at?: string;
-  timestamp?: string;
+  input_data: PredictionRequest;
   risk_category: RiskCategory;
-  confidence: number;
+  probabilities: ProbabilityData;
+  contributing_factors: string[];
+  message: string;
+  created_at: string;
 }
 
 export interface ModelResult {

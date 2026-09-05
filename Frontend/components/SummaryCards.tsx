@@ -9,7 +9,12 @@ export function SummaryCards({ history }: { history: HistoryRecord[] }) {
     (record) => record.risk_category === "High-Risk",
   ).length;
   const average = total
-    ? history.reduce((sum, record) => sum + record.confidence, 0) / total
+    ? history.reduce((sum, record) => {
+        const probabilities = Object.values(record.probabilities).filter(
+          (value): value is number => value !== undefined,
+        );
+        return sum + Math.max(...probabilities, 0);
+      }, 0) / total
     : null;
   const cards = [
     [

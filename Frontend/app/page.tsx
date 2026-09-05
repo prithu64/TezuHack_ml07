@@ -19,11 +19,13 @@ export default function DashboardPage() {
   useEffect(() => {
     getPredictionHistory()
       .then(setHistory)
-      .catch(() =>
+      .catch((error: unknown) => {
         setHistoryError(
-          "Unable to load prediction history. Please check the FastAPI backend.",
-        ),
-      )
+          error instanceof Error
+            ? error.message
+            : "Unable to load prediction history. Please check the FastAPI backend.",
+        );
+      })
       .finally(() => setHistoryLoading(false));
   }, []);
 

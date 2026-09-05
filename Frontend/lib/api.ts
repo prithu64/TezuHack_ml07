@@ -5,7 +5,7 @@ import type {
   PredictionResponse,
 } from "@/types/prediction";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL;
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
 
 function getApiUrl(): string {
   if (!API_URL) {
@@ -25,7 +25,10 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   });
 
   if (!response.ok) {
-    throw new Error(`Request failed with status ${response.status}.`);
+    const errorBody = await response.json().catch(() => null);
+    throw new Error(
+      errorBody?.detail ?? `Request failed with status ${response.status}.`,
+    );
   }
 
   return response.json() as Promise<T>;
@@ -43,7 +46,7 @@ export function predictStudent(
 export async function getPredictionHistory(): Promise<HistoryRecord[]> {
   const data = await request<
     HistoryRecord[] | { predictions?: HistoryRecord[] }
-  >("/history");
+  >("/predictions");
   return Array.isArray(data) ? data : (data.predictions ?? []);
 }
 

@@ -1,12 +1,17 @@
 from pathlib import Path
 from typing import Literal
+from datetime import datetime, timezone
 
 import joblib
 import pandas as pd
+from bson import ObjectId
+from pymongo.errors import PyMongoError
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
+
+from database import check_database_connection, predictions_collection
 
 # Paths
 BASE_DIR = Path(__file__).resolve().parent
@@ -188,6 +193,8 @@ def get_support_message(risk_category: str):
 def predict_student_risk(student: StudentData):
 
     try:
+        check_database_connection()
+
         # Convert request data into a dictionary
         student_data = student.model_dump()
 
@@ -227,16 +234,79 @@ def predict_student_risk(student: StudentData):
             predicted_category
         )
 
-        return {
+        prediction_result = {
             "risk_category": predicted_category,
             "probabilities": probability_dict,
             "contributing_factors": contributing_factors,
             "message": support_message
         }
 
-    except Exception as error:
+        predictions_collection.insert_one({
+            "input_data": student_data,
+            **prediction_result,
+            "created_at": datetime.now(timezone.utc),
+        })
+
+        return prediction_result
+
+    except PyMongoError:
+        raise HTTPException(
+            status_code=503,
+            detail="MongoDB is unavailable. Please make sure the local MongoDB server is running."
+        )
+    except Exception:
+        raise HTTPException(
+            status_code=500,
+            detail="Prediction failed. Please check the backend logs."
+        )
+
+
+def serialize_prediction(document: dict) -> dict:
+    document["id"] = str(document.pop("_id"))
+    if isinstance(document.get("created_at"), datetime):
+        document["created_at"] = document["created_at"].isoformat()
+    return document
+
+
+@app.get("/predictions")
+def get_predictions():
+    try:
+        check_database_connection()
+        documents = predictions_collection.find().sort("created_at", -1)
+        return [serialize_prediction(document) for document in documents]
+    except PyMongoError:
+        raise HTTPException(
+            status_code=503,
+            detail="MongoDB is unavailable. Please make sure the local MongoDB server is running."
+        )
+    except Exception:
+        raise HTTPException(
+            status_code=500,
+            detail="Unable to load prediction history. Please check the backend logs."
+        )
+
+
+@app.get("/predictions/{prediction_id}")
+def get_prediction(prediction_id: str):
+    if not ObjectId.is_valid(prediction_id):
+        raise HTTPException(status_code=400, detail="Invalid prediction id.")
+
+    try:
+        check_database_connection()
+        document = predictions_collection.find_one({"_id": ObjectId(prediction_id)})
+        if document is None:
+            raise HTTPException(status_code=404, detail="Prediction not found.")
+        return serialize_prediction(document)
+    except HTTPException:
+        raise
+    except PyMongoError:
+        raise HTTPException(
+            status_code=503,
+            detail="MongoDB is unavailable. Please make sure the local MongoDB server is running."
+        )
+    except Exception:
 
         raise HTTPException(
             status_code=500,
-            detail=f"Prediction failed: {str(error)}"
+            detail="Unable to load the prediction. Please check the backend logs."
         )
