@@ -112,14 +112,16 @@ button {
 .theme-toggle {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  padding: 8px 10px;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  padding: 0;
   border: 1px solid var(--line);
   border-radius: 999px;
   color: var(--ink);
   background: var(--panel);
   font:
-    11px Arial,
+    18px Arial,
     sans-serif;
 }
 .theme-toggle:hover {
