@@ -127,7 +127,7 @@ def root():
 
 
 # Generate contributing factors
-def get_contributing_factors(student: StudentData):
+def get_contributing_factors(student: StudentData, risk_category: str):
 
     factors = []
 
@@ -162,9 +162,13 @@ def get_contributing_factors(student: StudentData):
             "Limited internet access may affect learning resources"
         )
 
-    if not factors:
+    if not factors and risk_category == "Safe":
         factors.append(
             "No major risk indicators detected"
+        )
+    elif not factors:
+        factors.append(
+            "The model identified an elevated risk level from the combined student indicators"
         )
 
     return factors
@@ -231,7 +235,10 @@ def predict_student_risk(student: StudentData):
         }
 
         # Generate supporting indicators
-        contributing_factors = get_contributing_factors(student)
+        contributing_factors = get_contributing_factors(
+            student,
+            predicted_category
+        )
 
         # Generate support message
         support_message = get_support_message(
@@ -267,8 +274,13 @@ def predict_student_risk(student: StudentData):
 
 def serialize_prediction(document: dict) -> dict:
     document["id"] = str(document.pop("_id"))
-    if isinstance(document.get("created_at"), datetime):
-        document["created_at"] = document["created_at"].isoformat()
+    created_at = document.get("created_at")
+    if isinstance(created_at, datetime):
+        if created_at.tzinfo is None:
+            created_at = created_at.replace(tzinfo=timezone.utc)
+        document["created_at"] = created_at.isoformat().replace(
+            "+00:00", "Z"
+        )
     return document
 
 
