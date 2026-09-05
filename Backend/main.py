@@ -314,3 +314,28 @@ def get_prediction(prediction_id: str):
             status_code=500,
             detail="Unable to load the prediction. Please check the backend logs."
         )
+
+
+@app.delete("/predictions/{prediction_id}")
+def delete_prediction(prediction_id: str):
+    if not ObjectId.is_valid(prediction_id):
+        raise HTTPException(status_code=400, detail="Invalid prediction id.")
+
+    try:
+        check_database_connection()
+        result = predictions_collection.delete_one({"_id": ObjectId(prediction_id)})
+        if result.deleted_count == 0:
+            raise HTTPException(status_code=404, detail="Prediction not found.")
+        return {"message": "Prediction deleted successfully."}
+    except HTTPException:
+        raise
+    except PyMongoError:
+        raise HTTPException(
+            status_code=503,
+            detail="MongoDB is unavailable. Please make sure the local MongoDB server is running."
+        )
+    except Exception:
+        raise HTTPException(
+            status_code=500,
+            detail="Unable to delete the prediction. Please check the backend logs."
+        )

@@ -7,7 +7,7 @@ import { PredictionForm } from "@/components/PredictionForm";
 import { PredictionHistory } from "@/components/PredictionHistory";
 import { PredictionResult } from "@/components/PredictionResult";
 import { SummaryCards } from "@/components/SummaryCards";
-import { getPredictionHistory } from "@/lib/api";
+import { deletePrediction, getPredictionHistory } from "@/lib/api";
 import type { HistoryRecord, PredictionResponse } from "@/types/prediction";
 
 export default function DashboardPage() {
@@ -34,6 +34,13 @@ export default function DashboardPage() {
     getPredictionHistory()
       .then(setHistory)
       .catch(() => undefined);
+  }
+
+  async function handleDeletePrediction(predictionId: string) {
+    await deletePrediction(predictionId);
+    setHistory((current) =>
+      current.filter((record) => record.id !== predictionId),
+    );
   }
 
   return (
@@ -75,7 +82,11 @@ export default function DashboardPage() {
         {historyLoading ? (
           <LoadingState label="Loading prediction history..." />
         ) : (
-          <PredictionHistory history={history} error={historyError} />
+          <PredictionHistory
+            history={history}
+            error={historyError}
+            onDelete={handleDeletePrediction}
+          />
         )}
       </section>
       <footer className="app-footer">

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { HistoryRecord } from "@/types/prediction";
 
 function formatDate(record: HistoryRecord) {
@@ -15,10 +16,30 @@ function formatDate(record: HistoryRecord) {
 export function PredictionHistory({
   history,
   error,
+  onDelete,
 }: {
   history: HistoryRecord[];
   error?: string;
+  onDelete: (predictionId: string) => Promise<void>;
 }) {
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<HistoryRecord | null>(
+    null,
+  );
+
+  async function handleDelete() {
+    if (!pendingDelete?.id) return;
+
+    const predictionId = pendingDelete.id;
+    setDeletingId(predictionId);
+    try {
+      await onDelete(predictionId);
+      setPendingDelete(null);
+    } finally {
+      setDeletingId(null);
+    }
+  }
+
   if (error)
     return (
       <div className="state-block error-state" role="alert">
@@ -33,8 +54,9 @@ export function PredictionHistory({
       </div>
     );
   return (
-    <div className="table-scroll">
-      <table>
+    <>
+      <div className="table-scroll">
+        <table>
         <thead>
           <tr>
             <th>Date</th>
@@ -43,6 +65,7 @@ export function PredictionHistory({
             <th>Previous grade</th>
             <th>Study hours</th>
             <th>Contributing factors</th>
+            <th aria-label="Actions" />
           </tr>
         </thead>
         <tbody>
@@ -66,10 +89,59 @@ export function PredictionHistory({
                   ))}
                 </ul>
               </td>
+              <td>
+                {record.id && (
+                  <button
+                    className="delete-button"
+                    type="button"
+                    title="Delete prediction"
+                    aria-label={`Delete prediction from ${formatDate(record)}`}
+                    disabled={deletingId === record.id}
+                    onClick={() => setPendingDelete(record)}
+                  >
+                    {deletingId === record.id ? "..." : "🗑"}
+                  </button>
+                )}
+              </td>
             </tr>
           ))}
         </tbody>
-      </table>
-    </div>
+        </table>
+      </div>
+      {pendingDelete && (
+        <div className="modal-backdrop" role="presentation">
+          <div
+            className="confirmation-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="delete-dialog-title"
+          >
+            <p className="eyebrow">Delete prediction</p>
+            <h3 id="delete-dialog-title">
+              Are you sure you want to delete this record?
+            </h3>
+            <p>This action will permanently remove it from prediction history.</p>
+            <div className="modal-actions">
+              <button
+                className="modal-cancel"
+                type="button"
+                onClick={() => setPendingDelete(null)}
+                disabled={deletingId !== null}
+              >
+                Cancel
+              </button>
+              <button
+                className="modal-delete"
+                type="button"
+                onClick={handleDelete}
+                disabled={deletingId !== null}
+              >
+                {deletingId !== null ? "Deleting..." : "Delete record"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }

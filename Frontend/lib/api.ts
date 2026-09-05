@@ -31,6 +31,10 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     );
   }
 
+  if (response.status === 204) {
+    return undefined as T;
+  }
+
   return response.json() as Promise<T>;
 }
 
@@ -48,6 +52,12 @@ export async function getPredictionHistory(): Promise<HistoryRecord[]> {
     HistoryRecord[] | { predictions?: HistoryRecord[] }
   >("/predictions");
   return Array.isArray(data) ? data : (data.predictions ?? []);
+}
+
+export function deletePrediction(predictionId: string): Promise<{ message: string }> {
+  return request<{ message: string }>(`/predictions/${predictionId}`, {
+    method: "DELETE",
+  });
 }
 
 export async function getModelResults(): Promise<ModelResult[]> {
